@@ -1,0 +1,37 @@
+[package]
+name = "tokio_uds-test"
+version = "0.1.0"
+authors = ["Naja Melan <najamelan@autistici.org>"]
+edition = "2018"
+
+
+[[bin]]
+
+	name = "peera"
+	path = "src/peera.rs"
+
+
+[[bin]]
+
+	name = "peerb"
+	path = "src/peerb.rs"
+
+
+[[bin]]
+
+	name = "peerc"
+	path = "src/peerc.rs"
+
+
+[lib]
+
+	name = "libpeers"
+	path = "src/libpeers.rs"
+
+
+[dependencies]
+
+	failure   = "*"
+	tokio-uds = "*"
+	tokio     = "*"
+	futures   = "*"

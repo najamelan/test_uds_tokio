@@ -1,51 +1,59 @@
+#![ feature( await_macro, async_await, futures_api ) ]
 
-// enable the await! macro, async support, and the new std::Futures api.
-//
-#![feature(await_macro, async_await, futures_api)]
 
-// only needed to manually implement a std future:
-//
-#![feature(arbitrary_self_types)]
-
+use std::process::exit;
+use futures_util::{future::FutureExt, try_future::TryFutureExt};
 use std::env::args;
 
-use tokio::prelude::*;
-use tokio::io;
 use tokio_uds::UnixStream;
-use tokio_async_await::compat::forward::IntoAwaitable;
+use tokio_async_await::await;
+
 use libpeers::*;
+use libpeers::msg::Write;
+
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use actix::prelude::*;
 
 fn main()
 {
-	println!( "PeerB: Starting" );
-
-	// for argument in args()
-	// {
-	// 	println!( "PeerB: Argument passed on cli: {}", argument );
-	// }
-
-	let sock_addr = args().nth( 2 ).expect( "No arguments passed in." );
-
-	println!( "PeerB: socket addres set to: {:?}", sock_addr );
-
-	let ipc_client = IpcClient{ connection: None }.start();
-	let connect = Connect { address: PathBuf::from( &sock_addr ) };
-
-	let connection = ipc_client.send( connect );
-
-	let writer     = Write{ }
-
-	let write =  async move
+	System::run( move ||	{ Arbiter::spawn( async move
 	{
-		if let Err( err ) = await!( connection.into_awaitable() ) { eprintln!( "{}", err ) }
-		if let Err( err ) = await!( channel.write( Vec::from( "ha".as_bytes() ) ) ) { eprintln!( "{}", err ) }
-	};
+		println!( "PeerB: Starting" );
 
-	tokio::run_async( write );
+		// for argument in args()
+		// {
+		// 	println!( "PeerB: Argument passed on cli: {}", argument );
+		// }
 
-	println!( "PeerB: Shutting down" );
+		let sock_addr = args().nth( 2 ).expect( "No arguments passed in." );
+
+		println!( "PeerB: socket addres set to: {:?}", sock_addr );
+
+		let socket = match await!( UnixStream::connect( PathBuf::from( &sock_addr ) ) )
+		{
+			Ok ( cx  ) => { cx },
+			Err( err ) => { eprintln!( "{}", err ); exit( 1 ); }
+		};
+
+
+		let ipc_client = IpcClient{ socket: Rc::new( RefCell::new( socket ) ) }.start();
+
+		let write   = Write{ message: Vec::from( "PeerB says hi!".as_bytes() ) };
+		let write2  = Write{ message: Vec::from( "PeerB says hi more!".as_bytes() ) };
+		let write3  = Write{ message: Vec::from( "PeerB says hi even more!!!".as_bytes() ) };
+
+		await!( ipc_client.send( write  ) ).expect( "PeerB: Write failed" );
+		await!( ipc_client.send( write2 ) ).expect( "PeerB: Write failed" );
+		await!( ipc_client.send( write3 ) ).expect( "PeerB: Write failed" );
+
+		System::current().stop();
+		println!( "PeerB: Shutting down" );
+
+		Ok(())
+
+	}.boxed().compat())});
 }
 

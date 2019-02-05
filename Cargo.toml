@@ -26,7 +26,7 @@ edition = "2018"
 [lib]
 
 	name = "libpeers"
-	path = "src/libpeers.rs"
+	path = "src/libpeers/libpeers.rs"
 
 
 [dependencies]
@@ -35,9 +35,15 @@ edition = "2018"
 	failure   = "*"
 	tokio-uds = "*"
 	tokio = { version = "0.1.15", features = ["async-await-preview"] }
-	futures   = "0.1.25"
 
 	# Only needs to be explicitly imported if you want to make use of
 	# the machinery to convert promises back and forth between 0.1 and 0.3
 	# (which is built into the provided await! macro only otherwise):
 	tokio-async-await = "0.1.5"
+
+	futures   = "0.1.25"
+
+	[dependencies.futures-util-preview]
+
+		features         = [ "tokio-compat" ]
+		version          = "~0.3.0-alpha.12"

@@ -17,16 +17,21 @@
 // 5. respond "response+number"
 
 
-use tokio::prelude::*;
+// use tokio::prelude::*;
 // use futures::prelude::*;
-use tokio_uds::{ UnixListener, UnixStream };
+// use tokio_uds::{ UnixListener, UnixStream };
+use futures::future::Future;
 use std::process::Command;
 use std::str;
 // use failure::Error;
-
+use libpeers::*;
+use std::path::PathBuf;
+use actix::prelude::*;
 
 fn main()
 {
+	let sys = System::new( "peers" );
+
 	const SOCK_ADDR: &str = "/home/user/peerAB.sock";
 
 	Command::new( "target/debug/peerb" )
@@ -37,73 +42,19 @@ fn main()
 		.expect( "PeerA: failed to execute process" )
 	;
 
+	let server    = IpcServer::new().start();
+	let processor = Processor{}.start();
 
-	std::fs::remove_file( SOCK_ADDR ).expect( "PeerA: Could remove socket file" );
-	let listener = UnixListener::bind( &SOCK_ADDR ).expect( "PeerA: Could not bind to socket" );
+	let bind = server.send( IpcBind{ socket: SOCK_ADDR.to_string(), processor } );
 
-	tokio::run_async
-	(
-		async
-		{
-			let mut incoming = listener.incoming();
+	Arbiter::spawn( bind.map(|_|()).map_err(|_|()) );
 
-			while let Some( stream ) = await!( incoming.next() )
-			{
-				println!("PeerA: New stream!");
-
-				tokio::spawn_async( handle_stream( stream.expect( "PeerA: Invalid Stream" ) ) );
-			}
-		}
-	);
+	sys.run();
 }
 
 
-// TODO: Bubble up errors
-//
-async fn handle_stream( mut stream: UnixStream )
-{
-	let mut out: Vec<u8> = Vec::new();
-	let mut buf          = [0u8; 1024];
 
 
-	let success: bool = loop
-	{
-		let read = await!( stream.read_async( &mut buf ) );
-
-		if let Ok( amount ) = read
-		{
-			if amount == 0 { break true; }
-
-			println!( "PeerA: Read {:?} bytes", amount );
-			out.extend_from_slice( &buf[ 0..amount ] );
-
-			continue;
-		}
-
-		else if let Err( err ) = read
-		{
-			eprintln!( "PeerA: Error during reading from stream: {:?}", err );
-
-			break false;
-		}
-	};
-
-	if success
-	{
-		tokio::spawn_async
-		(
-			process( str::from_utf8( &out ).expect( "PeerA: Got invalid utf from stream" ).to_string() )
-		);
-	}
-}
-
-
-async fn process( message: String )
-{
-	println!( "PeerA: process called" );
-
-	println!( "PeerA: received: {:?}", &message );
-}
 
 
 // struct Processor

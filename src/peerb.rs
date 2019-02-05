@@ -13,6 +13,10 @@ use tokio::prelude::*;
 use tokio::io;
 use tokio_uds::UnixStream;
 use tokio_async_await::compat::forward::IntoAwaitable;
+use libpeers::*;
+use std::path::PathBuf;
+use std::sync::Arc;
+use actix::prelude::*;
 
 fn main()
 {
@@ -27,30 +31,20 @@ fn main()
 
 	println!( "PeerB: socket addres set to: {:?}", sock_addr );
 
-	let writing = async
+	let ipc_client = IpcClient{ connection: None }.start();
+	let connect = Connect { address: PathBuf::from( &sock_addr ) };
+
+	let connection = ipc_client.send( connect );
+
+	let writer     = Write{ }
+
+	let write =  async move
 	{
-		let mut socket = await! ( UnixStream::connect( sock_addr ).into_awaitable() ).expect( "PeerB: Failed to connect" );
-
-		println!( "PeerB: start writing future" );
-
-		match await!( socket.write_async( "PeerB says hi.".as_bytes() ) )
-		// match await!( io::write_all( socket, "PeerB says hi." ).into_awaitable() )
-		{
-			Ok (_) => { println! ( "PeerB: successfully wrote to stream"       ); },
-			Err(e) => { eprintln!( "PeerB: failed to write to stream: {:?}", e ); }
-		}
-
-		std::thread::sleep_ms( 5000 );
-
-		match await!( socket.write_async( "PeerB says hi.".as_bytes() ) )
-		// match await!( io::write_all( socket, "PeerB says hi." ).into_awaitable() )
-		{
-			Ok (_) => { println! ( "PeerB: successfully wrote to stream"       ); },
-			Err(e) => { eprintln!( "PeerB: failed to write to stream: {:?}", e ); }
-		}
+		if let Err( err ) = await!( connection.into_awaitable() ) { eprintln!( "{}", err ) }
+		if let Err( err ) = await!( channel.write( Vec::from( "ha".as_bytes() ) ) ) { eprintln!( "{}", err ) }
 	};
 
-	tokio::run_async( writing );
+	tokio::run_async( write );
 
 	println!( "PeerB: Shutting down" );
 }

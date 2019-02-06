@@ -8,10 +8,12 @@
 // 4. receive "request+number"
 // 5. respond "response+number"
 
+use futures_util::{future::FutureExt, try_future::TryFutureExt};
 
 
-use libpeers::msg::IpcBind;
-use futures::future::Future;
+
+use tokio_async_await::await;
+
 use std::process::Command;
 use std::str;
 
@@ -22,22 +24,34 @@ fn main()
 {
 	let sys = System::new( "peers" );
 
-	const SOCK_ADDR: &str = "/home/user/peerAB.sock";
+	let program = async
+	{
+		println!( "PeerA: Starting peer A" );
 
-	Command::new( "target/debug/peerb" )
+		const SOCK_ADDR: &str = "/home/user/peerAB.sock";
 
-		.arg( "--server" )
-		.arg( SOCK_ADDR  )
-		.spawn()
-		.expect( "PeerA: failed to execute process" )
-	;
+		Command::new( "target/debug/peerb" )
 
-	let server    = IpcServer{}.start();
-	let processor = Processor{}.start().recipient();
+			.arg( "--server" )
+			.arg( SOCK_ADDR  )
+			.spawn()
+			.expect( "PeerA: failed to execute process" )
+		;
 
-	let bind = server.send( IpcBind{ socket: SOCK_ADDR.to_string(), processor } );
 
-	Arbiter::spawn( bind.map(|_|()).map_err(|_|()) );
+
+		let ipc_peer = await!( peer( SOCK_ADDR, Processor{}.start().recipient() ) );
+
+
+		println!( "PeerA: Starting IpcPeer" );
+
+		ipc_peer.start();
+
+		Ok(())
+
+	};
+
+	Arbiter::spawn( program.boxed().compat() );
 
 	sys.run();
 }

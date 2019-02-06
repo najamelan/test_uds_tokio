@@ -31,19 +31,32 @@ edition = "2018"
 
 [dependencies]
 
-	actix     = ">= 0.7.9"
-	failure   = "*"
-	tokio-uds = "*"
-	tokio = { version = "0.1.15", features = ["async-await-preview"] }
+	actix       = ">= 0.7.9"
+	# bytes       = "0.4.11"
+	failure     = "*"
+	tokio       = { version = "0.1.15", features = ["async-await-preview"] }
+	tokio-codec = "0.1.1"
+	tokio-uds   = "*"
+
+	tokio-serde-cbor = "0.3.1"
+	serde            = "1.0.87"
+	serde_derive     = "1.0.87"
 
 	# Only needs to be explicitly imported if you want to make use of
 	# the machinery to convert promises back and forth between 0.1 and 0.3
 	# (which is built into the provided await! macro only otherwise):
+	#
 	tokio-async-await = "0.1.5"
 
-	futures   = "0.1.25"
 
-	[dependencies.futures-util-preview]
+[dependencies.futures-core-preview]
 
-		features         = [ "tokio-compat" ]
-		version          = "~0.3.0-alpha.12"
+	default-features = false
+	version          = "0.3.0-alpha.12"
+
+
+[dependencies.futures-util-preview]
+
+	default-features = false
+	features         = ["tokio-compat"]
+	version          = "0.3.0-alpha.12"

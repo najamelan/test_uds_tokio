@@ -5,7 +5,7 @@ use crate::EkkeResult;
 //
 pub struct Buffer
 {
-	pub inner: Vec<u8>
+	pub inner: String
 }
 
 impl Message for Buffer { type Result = (); }

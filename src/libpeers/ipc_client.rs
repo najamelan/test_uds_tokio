@@ -35,6 +35,7 @@ impl Handler< Write > for IpcClient
 			}
 
 			Ok(())
+
 		}.boxed().compat());
 	}
 
